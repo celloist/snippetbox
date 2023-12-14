@@ -7,16 +7,23 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
-	_ "github.com/go-sql-driver/mysql" // New import
+	"github.com/alexedwards/scs/stores/mysqlstore"
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-playground/form/v4"
+	_ "github.com/go-sql-driver/mysql"
+
 	"snippetbox.tutorial/internal/models"
 )
 
 // create logger dependency to be shared in the application
 type application struct {
-	logger        *slog.Logger
-	snippets      *models.SnippetModel
-	templateCache map[string]*template.Template
+	logger         *slog.Logger
+	snippets       *models.SnippetModel
+	templateCache  map[string]*template.Template
+	formDecoder    *form.Decoder
+	seesionManager *scs.SessionManager
 }
 
 func main() {
@@ -39,17 +46,22 @@ func main() {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
+	formDecoder := form.NewDecoder()
+
+	sessionManager :=  scs.New()
+	sessionManager.Store = mysqlstore.New(db)
+	sessionManager.Lifetime = 12 * time.Hour
 
 	app := &application{
 		logger:        logger,
 		snippets:      &models.SnippetModel{DB: db},
 		templateCache: templateCache,
+		formDecoder:   formDecoder,
+		seesionManager: sessionManager,
 	}
 
 	logger.Info("starting server", "addr", *addr)
 
-	// Call the new app.routes() method to get the servemux containing our routes,
-	// and pass that to http.ListenAndServe().
 	err = http.ListenAndServe(*addr, app.routes())
 	logger.Error(err.Error())
 	os.Exit(1)
