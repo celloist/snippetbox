@@ -88,3 +88,5 @@ func (app *application) IsAuthenticated(r *http.Request) bool {
 
 	return isAuthenticated
 }
+
+
